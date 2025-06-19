@@ -89,5 +89,15 @@ class Redash:
         logging.warning(f'Failed getting results for Query {queryId}.')
       return self.read_csv_string(res.text)
 
+def extract_time_only(df):
+    df = df.copy()
+    df["time_block"] = pd.to_datetime(df["time_block"], errors="coerce").dt.strftime("%H:%M:%S")
+    return df
 
+def is_valid_number(val):
+    try:
+        float(val)
+        return True
+    except:
+        return False
 
