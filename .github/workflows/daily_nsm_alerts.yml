@@ -1,0 +1,32 @@
+name: Daily NSM Alerts
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # Runs daily at 9AM SGT (1AM UTC)
+  workflow_dispatch:
+
+jobs:
+  run-daily-nsm-alerts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create .env file from GitHub Secrets
+        run: |
+          echo "REDASH_BASE_URL=${{ secrets.REDASH_BASE_URL }}" >> .env
+          echo "REDASH_API_KEY=${{ secrets.REDASH_API_KEY }}" >> .env
+          echo "SLACK_TOKEN=${{ secrets.SLACK_TOKEN }}" >> .env
+          echo "SLACK_CHANNEL=${{ secrets.SLACK_CHANNEL }}" >> .env
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run NSM Recommender
+        run: python -m alerts.nsm_recommender.main
