@@ -26,8 +26,8 @@ jobs:
           echo "SLACK_CHANNEL=${{ secrets.SLACK_CHANNEL }}" >> .env
 
       - name: Install dependencies
-        run: |
-          pip install pandas numpy openpyxl python-dotenv
+        run: pip install -r requirements.txt
+
 
       - name: Run NSM Recommender
         run: python -m nsm_recommender.main
