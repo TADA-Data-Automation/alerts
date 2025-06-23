@@ -30,5 +30,5 @@ jobs:
           pip install pandas numpy openpyxl python-dotenv
 
       - name: Run NSM Recommender
-        run: python -m alerts.nsm_recommender.main
+        run: python -m nsm_recommender.main
 
