@@ -1,0 +1,6 @@
+pandas
+numpy
+openpyxl
+requests
+python-dotenv
+slack_sdk
