@@ -100,7 +100,10 @@ def run_nsm_recommendation(final_results, yesterday_str):
         "delta_nsm", "avg_dynamic_surge_level_y", "action"
     ]].sort_values(["zone", "time_block"]).reset_index(drop=True)
 
-    output_path = f"/content/drive/MyDrive/Pricing Prediction/nsm_recommendations_{yesterday_str}.xlsx"
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f"nsm_recommendations_{yesterday_str}.xlsx")
+    
     save_excel(summary_df, final_df.sort_values(["zone", "time_block"]).reset_index(drop=True), output_path)
 
     return summary_df, final_df, output_path
