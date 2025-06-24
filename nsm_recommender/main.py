@@ -62,12 +62,13 @@ def main():
         f"📎 Summary + details attached."
     )
 
-  print(f"📄 Output path: {output_path}")
-  print(f"📄 Type: {type(output_path)}")
-  print(f"📦 File exists? {os.path.exists(output_path)}")
 
     slack_bot = SlackBot()
     try:
+        print(f"📄 Output path: {output_path}")
+        print(f"📄 Type: {type(output_path)}")
+        print(f"📦 File exists? {os.path.exists(output_path)}")
+
         slack_bot.uploadFilesWithComment(
             files=[output_path],
             channel=slack_channel,
