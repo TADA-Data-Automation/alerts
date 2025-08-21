@@ -1,11 +1,13 @@
 import os
 from io import StringIO
 from logging import Logger
+
 import pandas as pd
 import requests
 from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+
 
 class SlackBot:
     def __init__(self):
@@ -24,42 +26,75 @@ class SlackBot:
             return None
 
     def uploadFile(self, file: str, channel: str, comment: str = "", thread_ts: str = None) -> str:
+        filename = os.path.basename(file)
+        filesize = os.path.getsize(file)
+
         try:
-            response = self.client.files_upload_v2(
-                channel=channel,
-                file=file,
-                initial_comment=comment if not thread_ts else None,
-                thread_ts=thread_ts
+            # 1) Get upload URL
+            ticket = self.client.files_getUploadURLExternal(
+                filename=filename,
+                length=filesize,
             )
-            self.logger.info(response)
+            upload_url = ticket["upload_url"]
+            file_id = ticket["file_id"]
 
-            return response["file"]["timestamp"]
+            # 2) Upload raw bytes
+            with open(file, "rb") as f:
+                resp = requests.post(upload_url, files={"file": (filename, f)})
+                resp.raise_for_status()
 
-        except SlackApiError as e:
+            # 3) Complete upload and share
+            result = self.client.files_completeUploadExternal(
+                files=[{"id": file_id, "title": filename}],
+                channel_id=channel,
+                initial_comment=comment if thread_ts is None else "",
+                thread_ts=thread_ts,
+            )
+            self.logger.info(result)
+
+            return result["files"][0]["timestamp"]
+
+        except (SlackApiError, requests.RequestException) as e:
             self.logger.error(f"Error uploading file: {e}")
             return None
 
+    def uploadFilesWithComment(self, files: list, channel: str, initial_comment: str = "", thread_ts: str = None) -> str:
+        ts_to_return = thread_ts
+        try:
+            for idx, file_path in enumerate(files):
+                filename = os.path.basename(file_path)
+                filesize = os.path.getsize(file_path)
 
-    def uploadFilesWithComment(self, files: list, channel: str, initial_comment: str = "") -> str:
-        ts_to_return = None
-        for idx, file_path in enumerate(files):
-            try:
-                result = self.client.files_upload_v2(
-                    channel=channel,
-                    file=file_path,
-                    initial_comment=initial_comment if idx == 0 else None
+                # Step 1: Get upload URL
+                ticket = self.client.files_getUploadURLExternal(
+                    filename=filename,
+                    length=filesize,
                 )
-                self.logger.info(result)
+                upload_url = ticket["upload_url"]
+                file_id = ticket["file_id"]
 
-                if ts_to_return is None:
-                    shares = result.get("file", {}).get("shares", {})
-                    for scope in ["public", "private"]:
-                        if scope in shares and channel in shares[scope]:
-                            ts_to_return = shares[scope][channel][0]["ts"]
+                # Step 2: Upload raw bytes
+                with open(file_path, "rb") as f:
+                    resp = requests.post(upload_url, files={"file": (filename, f)})
+                    resp.raise_for_status()
 
-            except SlackApiError as e:
-                self.logger.error(f"Error uploading file {file_path}: {e}")
-        return ts_to_return
+                # Step 3: Complete upload & share
+                result = self.client.files_completeUploadExternal(
+                    files=[{"id": file_id, "title": filename}],
+                    channel_id=channel,
+                    initial_comment=initial_comment if idx == 0 and ts_to_return is None else "",
+                    thread_ts=ts_to_return,
+                )
+
+                # Capture thread timestamp from the first file
+                if idx == 0 and ts_to_return is None:
+                    ts_to_return = result["files"][0]["timestamp"]
+
+            return ts_to_return
+
+        except (SlackApiError, requests.RequestException) as e:
+            self.logger.error(f"Error uploading files: {e}")
+            return ts_to_return
 
 
     def to_pandas(self, url: str) -> pd.DataFrame:
